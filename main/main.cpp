@@ -5184,16 +5184,24 @@ void Main::cleanup(bool p_force) {
 #ifndef XR_DISABLED
 	if (xr_server) {
 		memdelete(xr_server);
+		xr_server = nullptr;
 	}
 #endif // XR_DISABLED
 
 	if (audio_server) {
 		audio_server->finish();
 		memdelete(audio_server);
+		audio_server = nullptr;
 	}
+	// The OS_<Platform> instance owns its AudioDriverCoreAudio/etc. as a member
+	// field and registers it with AudioDriverManager. After memdelete(os) the
+	// driver pointer in AudioDriverManager::drivers[0] becomes dangling. Reset
+	// the manager's static state so the next OS instance's add_driver() starts clean.
+	AudioDriverManager::reset();
 
 	if (camera_server) {
 		memdelete(camera_server);
+		camera_server = nullptr;
 	}
 
 	OS::get_singleton()->finalize();
@@ -5202,26 +5210,35 @@ void Main::cleanup(bool p_force) {
 
 	if (input) {
 		memdelete(input);
+		input = nullptr;
 	}
 
 	if (packed_data) {
 		memdelete(packed_data);
+		packed_data = nullptr;
+		// zip_packed_data was added as a PackSource of packed_data and freed by its dtor.
+		zip_packed_data = nullptr;
 	}
 	if (performance) {
 		memdelete(performance);
+		performance = nullptr;
 	}
 	if (input_map) {
 		memdelete(input_map);
+		input_map = nullptr;
 	}
 	if (translation_server) {
 		memdelete(translation_server);
+		translation_server = nullptr;
 	}
 	if (tsman) {
 		memdelete(tsman);
+		tsman = nullptr;
 	}
 #ifndef PHYSICS_3D_DISABLED
 	if (physics_server_3d_manager) {
 		memdelete(physics_server_3d_manager);
+		physics_server_3d_manager = nullptr;
 	}
 #endif // PHYSICS_3D_DISABLED
 #ifndef PHYSICS_2D_DISABLED
@@ -5231,6 +5248,7 @@ void Main::cleanup(bool p_force) {
 #endif // PHYSICS_2D_DISABLED
 	if (globals) {
 		memdelete(globals);
+		globals = nullptr;
 	}
 
 	if (OS::get_singleton()->is_restart_on_exit_set()) {
