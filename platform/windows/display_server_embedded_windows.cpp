@@ -67,6 +67,7 @@ void DisplayServerEmbedded::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("touch_press", "idx", "x", "y", "pressed", "double_click", "window"), &DisplayServerEmbedded::touch_press);
 	ClassDB::bind_method(D_METHOD("touch_drag", "idx", "prev_x", "prev_y", "x", "y", "pressure", "tilt", "window"), &DisplayServerEmbedded::touch_drag);
 	ClassDB::bind_method(D_METHOD("touches_canceled", "idx", "window"), &DisplayServerEmbedded::touches_canceled);
+	ClassDB::bind_method(D_METHOD("scroll", "delta_x", "delta_y", "x", "y", "window"), &DisplayServerEmbedded::scroll, DEFVAL(MAIN_WINDOW_ID));
 	ClassDB::bind_method(D_METHOD("key", "key", "char", "unshifted", "physical", "modifiers", "pressed", "window"), &DisplayServerEmbedded::key, DEFVAL(MAIN_WINDOW_ID));
 }
 
@@ -326,6 +327,39 @@ void DisplayServerEmbedded::touch_drag(int p_idx, int p_prev_x, int p_prev_y, in
 
 void DisplayServerEmbedded::touches_canceled(int p_idx, DisplayServer::WindowID p_window) {
 	touch_press(p_idx, -1, -1, false, false, p_window);
+}
+
+void DisplayServerEmbedded::scroll(float p_delta_x, float p_delta_y, int p_x, int p_y, DisplayServer::WindowID p_window) {
+	// Synthesize wheel button events the way DisplayServerWindows does: a
+	// pressed + released pair per axis, with factor = |delta| (in notches).
+	// Positive delta_y scrolls up/away, positive delta_x scrolls right.
+	struct Axis {
+		float delta;
+		MouseButton positive;
+		MouseButton negative;
+	};
+	Axis axes[2] = {
+		{ p_delta_x, MouseButton::WHEEL_RIGHT, MouseButton::WHEEL_LEFT },
+		{ p_delta_y, MouseButton::WHEEL_UP, MouseButton::WHEEL_DOWN },
+	};
+	for (const Axis &axis : axes) {
+		if (axis.delta == 0.0f) {
+			continue;
+		}
+		Ref<InputEventMouseButton> ev;
+		ev.instantiate();
+		ev->set_window_id(p_window);
+		ev->set_button_index(axis.delta > 0 ? axis.positive : axis.negative);
+		ev->set_position(Vector2(p_x, p_y));
+		ev->set_global_position(ev->get_position());
+		ev->set_factor(Math::abs(axis.delta));
+		ev->set_pressed(true);
+		perform_event(ev);
+
+		Ref<InputEventMouseButton> ev_release = ev->duplicate();
+		ev_release->set_pressed(false);
+		perform_event(ev_release);
+	}
 }
 
 void DisplayServerEmbedded::key(Key p_key, char32_t p_char, Key p_unshifted, Key p_physical, BitField<KeyModifierMask> p_modifiers, bool p_pressed, DisplayServer::WindowID p_window) {
