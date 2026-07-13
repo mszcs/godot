@@ -30,7 +30,11 @@ common_win = [
 if env["library_type"] == "executable":
     common_win += ["godot_windows.cpp"]
 else:
-    common_win += ["libgodot_windows.cpp"]
+    common_win += [
+        "libgodot_windows.cpp",
+        "display_server_embedded_windows.cpp",
+        "rendering_native_surface_windows.cpp",
+    ]
 
 if env.msvc:
     common_win += ["crash_handler_windows_seh.cpp"]

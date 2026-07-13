@@ -350,4 +350,8 @@ IP::~IP() {
 	resolver->thread.wait_to_finish();
 
 	memdelete(resolver);
+
+	if (singleton == this) {
+		singleton = nullptr;
+	}
 }

@@ -175,6 +175,11 @@ public:
 	static void initialize(int p_driver);
 	static int get_driver_count();
 	static AudioDriver *get_driver(int p_driver);
+	// Resets the driver list to the initial state (just the static dummy driver).
+	// Must be called when the OS instance is destroyed so the next OS instance's
+	// `add_driver(&this->audio_driver)` does not see a stale dangling pointer at
+	// drivers[0] from the previous OS_<Platform>'s freed audio_driver member.
+	static void reset();
 };
 
 class AudioBusLayout;
